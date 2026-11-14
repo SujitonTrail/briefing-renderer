@@ -481,12 +481,110 @@ def draw_map_labels(img, ml, labels, a):
         ff = f.copy(); ff.putalpha(int(255 * a)); img.paste(ff, (int(x), int(y + yo)), ff)
 
 # ------------------------------------------------------------------ paper-cut panels (number / bars scenes)
+def _extra_panel_layers(kind, rng, PW, PH):
+    """Generic paper-cut backgrounds for space, health, energy and devices (no photos, no logos).
+    Big shapes stay near the edges so the centre stays clear for the number and unit text."""
+    layers = []
+    def new(): return PC(PW, PH, ss=1, pad=0)
+    if kind == "space":
+        c = new()
+        stars = [(rng.uniform(0, PW), rng.uniform(0, PH), rng.uniform(2, 5)) for _ in range(150)]
+        c.layer(lambda d, P, R: [d.ellipse([P(x - r, y - r), P(x + r, y + r)], fill=255) for x, y, r in stars], (232, 226, 196), sh=None, rough=0)
+        layers.append((c.sprite().img, 0.15))
+        c = new()
+        c.layer(lambda d, P, R: d.ellipse([P(-PW * .3, PH * .80), P(PW * 1.3, PH * 2.0)], fill=255), (58, 96, 160), sh=(0, -4, 6, .45), rough=1.0)
+        c.layer(lambda d, P, R: d.ellipse([P(-PW * .15, PH * .87), P(PW * 1.15, PH * 2.0)], fill=255), (84, 130, 194), sh=(0, -3, 4, .35), rough=1.0, seed=2)
+        layers.append((c.sprite().img, 0.35))
+        c = new(); mx, my, mr = PW * .84, PH * .16, 92
+        c.layer(lambda d, P, R: d.ellipse([P(mx - mr, my - mr), P(mx + mr, my + mr)], fill=255), (232, 226, 206), rough=1.2, seed=4)
+        c.layer(lambda d, P, R: [d.ellipse([P(mx + ox - rr, my + oy - rr), P(mx + ox + rr, my + oy + rr)], fill=255) for ox, oy, rr in ((-30, -20, 20), (26, 30, 15), (36, -36, 11))], (198, 190, 168), sh=(1, 1, 1, .3), rough=.6, seed=5)
+        sx, sy = PW * .22, PH * .15
+        c.layer(lambda d, P, R: (d.rectangle([P(sx - 110, sy - 13), P(sx - 32, sy + 13)], fill=255), d.rectangle([P(sx + 32, sy - 13), P(sx + 110, sy + 13)], fill=255)), (52, 84, 150), sh=(1, 2, 2, .4), seed=7)
+        c.layer(lambda d, P, R: (d.rectangle([P(sx - 26, sy - 20), P(sx + 26, sy + 20)], fill=255), d.line([P(sx, sy - 20), P(sx, sy - 48)], fill=255, width=5)), (214, 172, 70), seed=6)
+        rx, ry = PW * .17, PH * .70
+        c.layer(lambda d, P, R: (d.polygon([P(rx - 20, ry + 92), P(rx, ry + 150), P(rx + 20, ry + 92)])), (245, 150, 50), sh=None, rough=1.6, seed=8)
+        c.layer(lambda d, P, R: (d.polygon([P(rx - 26, ry - 40), P(rx, ry - 100), P(rx + 26, ry - 40)]), d.rectangle([P(rx - 26, ry - 42), P(rx + 26, ry + 90)], fill=255),
+                                 d.polygon([P(rx - 26, ry + 30), P(rx - 52, ry + 96), P(rx - 26, ry + 90)]), d.polygon([P(rx + 26, ry + 30), P(rx + 52, ry + 96), P(rx + 26, ry + 90)])), (240, 236, 226), seed=9)
+        c.layer(lambda d, P, R: d.ellipse([P(rx - 12, ry - 12), P(rx + 12, ry + 12)], fill=255), (60, 90, 150), sh=None, rough=0)
+        layers.append((c.sprite().img, 0.9))
+    elif kind == "health":
+        c = new(); crosses = [(rng.uniform(0, PW), rng.uniform(0, PH), rng.uniform(40, 90)) for _ in range(9)]
+        c.layer(lambda d, P, R: [(d.rectangle([P(x - s * .33, y - s), P(x + s * .33, y + s)], fill=255), d.rectangle([P(x - s, y - s * .33), P(x + s, y + s * .33)], fill=255)) for x, y, s in crosses], (200, 224, 214), sh=(1, 2, 3, .2), rough=.8)
+        layers.append((c.sprite().img, 0.25))
+        c = new(); y0 = PH * .86
+        strand = lambda ph: [(x, y0 + 46 * math.sin(x / 70 + ph)) for x in range(-20, PW + 40, 12)]
+        c.layer(lambda d, P, R: [d.line([P(x, y0 + 46 * math.sin(x / 70)), P(x, y0 + 46 * math.sin(x / 70 + math.pi))], fill=255, width=7) for x in range(0, PW, 44)], (232, 118, 104), sh=(1, 2, 2, .25), rough=.4, seed=3)
+        c.layer(lambda d, P, R: (d.line([P(*p) for p in strand(0)], fill=255, width=14, joint="curve"), d.line([P(*p) for p in strand(math.pi)], fill=255, width=14, joint="curve")), (70, 150, 140), sh=(2, 3, 3, .35), rough=.6, seed=4)
+        layers.append((c.sprite().img, 0.55))
+        c = new()
+        pills = [(PW * .16, PH * .16, 0), (PW * .30, PH * .12, 1), (PW * .84, PH * .14, 0)]
+        for i, (x, y, v) in enumerate(pills):
+            if v:
+                c.layer(lambda d, P, R, x=x, y=y: d.rounded_rectangle([P(x - 30, y - 70), P(x + 30, y + 70)], radius=30, fill=255), (246, 242, 232), seed=10 + i)
+                c.layer(lambda d, P, R, x=x, y=y: d.rounded_rectangle([P(x - 30, y - 70), P(x + 30, y)], radius=30, fill=255), (226, 76, 62), sh=None, rough=.5, seed=20 + i)
+            else:
+                c.layer(lambda d, P, R, x=x, y=y: d.rounded_rectangle([P(x - 70, y - 30), P(x + 70, y + 30)], radius=30, fill=255), (246, 242, 232), seed=10 + i)
+                c.layer(lambda d, P, R, x=x, y=y: d.rounded_rectangle([P(x - 70, y - 30), P(x, y + 30)], radius=30, fill=255), (70, 150, 140), sh=None, rough=.5, seed=20 + i)
+        hb = [(0, .0), (.30, .0), (.34, -.5), (.38, .7), (.42, -1.4), (.46, .4), (.50, .0), (1.0, .0)]
+        c.layer(lambda d, P, R: d.line([P(x * PW, PH * .73 + y * 50) for x, y in hb], fill=255, width=9, joint="curve"), (220, 64, 52), sh=(1, 2, 2, .3), rough=.3, seed=30)
+        layers.append((c.sprite().img, 1.0))
+    elif kind == "energy":
+        c = new(); sx, sy = PW * .12, PH * .14
+        c.layer(lambda d, P, R: d.ellipse([P(sx - 80, sy - 80), P(sx + 80, sy + 80)], fill=255), (250, 204, 84), rough=1.5)
+        c.layer(lambda d, P, R: d.polygon([P(0, PH * .74)] + [P(x, PH * .70 - 60 * math.sin(x / 260) - 25 * math.sin(x / 90)) for x in range(0, PW + 40, 40)] + [P(PW, PH), P(0, PH)]), (176, 204, 156), sh=(0, -3, 4, .3), rough=1.0, seed=2)
+        layers.append((c.sprite().img, 0.25))
+        c = new()
+        for i, (tx, top, bl) in enumerate(((PW * .72, PH * .64, 70), (PW * .84, PH * .68, 58), (PW * .62, PH * .71, 48))):
+            base_y = PH * .80; ang0 = rng.uniform(0, 2 * math.pi)
+            c.layer(lambda d, P, R, tx=tx, top=top, base_y=base_y: d.polygon([P(tx - 4, top), P(tx + 4, top), P(tx + 10, base_y), P(tx - 10, base_y)]), (246, 244, 238), seed=40 + i)
+            def blades(d, P, R, tx=tx, top=top, bl=bl, a0=ang0):
+                for k in range(3):
+                    a = a0 + k * 2 * math.pi / 3; ca, sa = math.cos(a), math.sin(a)
+                    d.polygon([P(tx, top), P(tx + bl * ca - 9 * sa, top + bl * sa + 9 * ca), P(tx + bl * ca, top + bl * sa)])
+                d.ellipse([P(tx - 9, top - 9), P(tx + 9, top + 9)], fill=255)
+            c.layer(blades, (250, 248, 242), sh=(1, 2, 3, .35), rough=.5, seed=50 + i)
+        layers.append((c.sprite().img, 0.5))
+        c = new()
+        c.layer(lambda d, P, R: d.rectangle([P(0, PH * .86), P(PW, PH)], fill=255), (130, 168, 108), sh=(0, -3, 4, .3), rough=.8, seed=60)
+        for i in range(5):
+            x0 = PW * .03 + i * 120 + (i // 3) * 40; y0 = PH * .80
+            c.layer(lambda d, P, R, x0=x0, y0=y0: d.polygon([P(x0 + 26, y0 - 60), P(x0 + 112, y0 - 60), P(x0 + 92, y0 + 10), P(x0 + 4, y0 + 10)]), (44, 70, 124), sh=(2, 3, 3, .4), rough=.4, seed=70 + i)
+            c.layer(lambda d, P, R, x0=x0, y0=y0: [d.line([P(x0 + 26 - 22 * k / 3, y0 - 60 + 70 * k / 3), P(x0 + 112 - 20 * k / 3, y0 - 60 + 70 * k / 3)], fill=255, width=3) for k in (1, 2)]
+                                                  + [d.line([P(x0 + 26 + 86 * k / 4, y0 - 60), P(x0 + 4 + 88 * k / 4, y0 + 10)], fill=255, width=3) for k in (1, 2, 3)], (120, 156, 210), sh=None, rough=0)
+            c.layer(lambda d, P, R, x0=x0, y0=y0: d.rectangle([P(x0 + 52, y0 + 10), P(x0 + 60, y0 + 40)], fill=255), (90, 96, 104), sh=None, rough=0)
+        layers.append((c.sprite().img, 0.95))
+    elif kind == "devices":
+        c = new(); waves = [(rng.uniform(0, PW), rng.uniform(0, PH)) for _ in range(10)]
+        c.layer(lambda d, P, R: [d.arc([P(x - r, y - r), P(x + r, y + r)], 225, 315, fill=255, width=8) for x, y in waves for r in (30, 56, 82)], (56, 72, 104), sh=None, rough=.4)
+        layers.append((c.sprite().img, 0.25))
+        c = new()
+        tiles = [(200, 70, 60), (70, 150, 110), (230, 180, 60), (80, 120, 200), (150, 100, 180), (60, 170, 190)]
+        for i, (px, py, sc_) in enumerate(((PW * .84, PH * .19, .62), (PW * .74, PH * .78, .7), (PW * .88, PH * .80, .62))):
+            w_, h_ = 150 * sc_, 300 * sc_
+            c.layer(lambda d, P, R, px=px, py=py, w_=w_, h_=h_: d.rounded_rectangle([P(px - w_ / 2, py - h_ / 2), P(px + w_ / 2, py + h_ / 2)], radius=int(26 * sc_), fill=255), (70, 76, 92), sh=(3, 4, 4, .5), seed=80 + i)
+            c.layer(lambda d, P, R, px=px, py=py, w_=w_, h_=h_: d.rectangle([P(px - w_ / 2 + 12, py - h_ / 2 + 30), P(px + w_ / 2 - 12, py + h_ / 2 - 30)], fill=255), (34, 92, 140), sh=None, rough=.2, seed=90 + i)
+            for j in range(6):
+                tx = px - w_ / 2 + 28 + (j % 3) * (w_ - 56) / 2; ty = py - h_ / 2 + 66 + (j // 3) * 52 * sc_
+                ts = 14 * sc_
+                c.layer(lambda d, P, R, tx=tx, ty=ty, ts=ts: d.rounded_rectangle([P(tx - ts, ty - ts), P(tx + ts, ty + ts)], radius=int(ts * .4), fill=255), tiles[(i + j) % 6], sh=None, rough=.3, seed=100 + i * 6 + j)
+        lx, ly = PW * .24, PH * .86
+        c.layer(lambda d, P, R: d.rectangle([P(lx - 120, ly - 150), P(lx + 120, ly)], fill=255), (70, 76, 92), sh=(3, 4, 4, .5), seed=120)
+        c.layer(lambda d, P, R: d.rectangle([P(lx - 106, ly - 138), P(lx + 106, ly - 12)], fill=255), (34, 92, 140), sh=None, rough=.2, seed=121)
+        c.layer(lambda d, P, R: d.polygon([P(lx - 140, ly + 26), P(lx - 120, ly), P(lx + 120, ly), P(lx + 140, ly + 26)]), (110, 116, 130), sh=(2, 3, 3, .45), seed=122)
+        layers.append((c.sprite().img, 0.75))
+    return layers
+
 def make_paper_panel(kind, seed=3):
     rng = np.random.default_rng(seed); PW, PH = W + 160, MAP_H + 100
-    spec = {"city": ((214, 206, 190), False), "river": ((226, 220, 204), False), "chart": ((224, 214, 192), False), "circuit": ((40, 86, 66), True), "servers": ((28, 40, 64), True), "neurons": ((48, 36, 82), True)}
+    spec = {"city": ((214, 206, 190), False), "river": ((226, 220, 204), False), "chart": ((224, 214, 192), False), "circuit": ((40, 86, 66), True), "servers": ((28, 40, 64), True), "neurons": ((48, 36, 82), True),
+            "space": ((20, 24, 52), True), "health": ((222, 236, 230), False), "energy": ((212, 228, 240), False), "devices": ((28, 32, 44), True)}
     if kind not in spec: return None
     bgc, dark = spec[kind]
     layers = []
+    if kind in ("space", "health", "energy", "devices"):
+        layers = _extra_panel_layers(kind, rng, PW, PH)
+        base = texturize(Image.new("RGB", (PW, PH), bgc))
+        return {"base": base, "layers": [(texturize(l), f) for l, f in layers], "dark": dark}
     if kind == "chart":
         for li, (col, top, drop) in enumerate((((206, 194, 168), .25, .35), ((188, 172, 142), .42, .32), ((168, 150, 120), .6, .28))):
             c = PC(PW, PH, ss=1, pad=0)
